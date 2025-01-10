@@ -12,6 +12,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     addRGFW(b, exe);
+    addOpenGL(b, exe);
 
     b.installArtifact(exe);
 
@@ -31,6 +32,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     addRGFW(b, exe_unit_tests);
+    addOpenGL(b, exe);
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
 
@@ -49,4 +51,13 @@ fn addRGFW(b: *std.Build, compile: *std.Build.Step.Compile) void {
     compile.linkSystemLibrary("opengl32");
     compile.linkSystemLibrary("winmm");
     compile.linkSystemLibrary("user32");
+}
+
+fn addOpenGL(b: *std.Build, compile: *std.Build.Step.Compile) void {
+    const gl_bindings = zigglgen.generateBindingsModule(b, .{
+        .api = .gles,
+        .version = .@"3.2",
+    });
+
+    compile.root_module.addImport("gl", gl_bindings);
 }
