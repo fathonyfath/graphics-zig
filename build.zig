@@ -11,6 +11,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     addRGFW(b, exe, target);
+    addOpenGL(b, exe);
 
     b.installArtifact(exe);
 
@@ -30,6 +31,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     addRGFW(b, exe_unit_tests, target);
+    addOpenGL(b, exe);
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
 
@@ -61,4 +63,13 @@ fn addRGFW(b: *std.Build, compile: *std.Build.Step.Compile, target: std.Build.Re
     } else {
         @panic("Unsupported target OS");
     }
+}
+
+fn addOpenGL(b: *std.Build, compile: *std.Build.Step.Compile) void {
+    const gl_bindings = @import("zigglgen").generateBindingsModule(b, .{
+        .api = .gl,
+        .version = .@"4.1",
+    });
+
+    compile.root_module.addImport("gl", gl_bindings);
 }
