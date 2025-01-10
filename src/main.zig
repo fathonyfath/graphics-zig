@@ -1,6 +1,7 @@
 const std = @import("std");
 const rgfw = @import("rgfw.zig").rgfw;
 const gl = @import("gl");
+const render = @import("render.zig");
 
 var procs: gl.ProcTable = undefined;
 
@@ -21,12 +22,16 @@ pub fn main() !void {
     const result = gl.GetString(gl.VERSION) orelse unreachable;
     std.debug.print("OpenGL version: {s}\n", .{result});
 
+    render.init();
+
     while (rgfw.RGFW_window_shouldClose(window) == rgfw.RGFW_FALSE) {
         while (rgfw.RGFW_window_checkEvent(window) != null) {
             if (window.*.event.type == rgfw.RGFW_quit) {
                 rgfw.RGFW_window_setShouldClose(window);
             }
         }
+
+        render.render();
 
         rgfw.RGFW_window_swapBuffers(window);
     }
