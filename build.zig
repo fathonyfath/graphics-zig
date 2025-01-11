@@ -12,6 +12,7 @@ pub fn build(b: *std.Build) void {
     });
     addRGFW(b, exe, target);
     addOpenGL(b, exe);
+    addStbImage(b, exe);
 
     b.installArtifact(exe);
 
@@ -32,6 +33,7 @@ pub fn build(b: *std.Build) void {
     });
     addRGFW(b, exe_unit_tests, target);
     addOpenGL(b, exe);
+    addStbImage(b, exe_unit_tests);
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
 
@@ -72,4 +74,12 @@ fn addOpenGL(b: *std.Build, compile: *std.Build.Step.Compile) void {
     });
 
     compile.root_module.addImport("gl", gl_bindings);
+}
+
+fn addStbImage(b: *std.Build, compile: *std.Build.Step.Compile) void {
+    compile.linkLibC();
+    compile.addIncludePath(b.path("vendor/stb"));
+    compile.addCSourceFile(.{
+        .file = b.path("src/stb_image.c"),
+    });
 }
