@@ -7,6 +7,10 @@
             .url = "git+https://github.com/castholm/zigglgen#1c901bef6d312ef1814b8fce3c5a9e9e8e61ac2d",
             .hash = "12209d8a018832bee15d9da29a12fa753d89b56cd843cdf1f39501546c6467e38ba1",
         },
+        .zm = .{
+            .url = "git+https://github.com/fathonyfath/zm?ref=0.13.x-compat#0d9383a451acc94670e76bd70bdad0524431ef46",
+            .hash = "1220ca0642c747f76ad2eb7a270f47b11821643ffa9908639a897a7bceb098cbb5a9",
+        },
     },
     .paths = .{
         "build.zig",
