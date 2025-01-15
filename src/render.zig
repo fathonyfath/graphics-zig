@@ -14,10 +14,12 @@ const vertex_shader_source =
     \\out vec3 ourColor;
     \\out vec2 TexCoord;
     \\
-    \\uniform mat4 transform;
+    \\uniform mat4 model;
+    \\uniform mat4 view;
+    \\uniform mat4 projection;
     \\
     \\void main() {
-    \\  gl_Position = transform * vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    \\  gl_Position = projection * view * model * vec4(aPos, 1.0);
     \\  ourColor = aColor;
     \\  TexCoord = aTexCoord;
     \\}
@@ -41,16 +43,81 @@ const fragment_shader_source =
 ;
 
 const vertices = [_]f32{
-    // positions     // colors      // tex coords
-    0.5,  0.5,  0.0, 1.0, 0.0, 0.0, 1.0, 1.0,
-    0.5,  -0.5, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0,
-    -0.5, -0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
-    -0.5, 0.5,  0.0, 1.0, 1.0, 0.0, 0.0, 1.0,
+    // positions      // colors      // tex coords
+    // front
+    0.5,  0.5,  0.5,  1.0, 1.0, 1.0, 1.0, 1.0,
+    0.5,  -0.5, 0.5,  1.0, 1.0, 1.0, 1.0, 0.0,
+    -0.5, -0.5, 0.5,  1.0, 1.0, 1.0, 0.0, 0.0,
+    -0.5, 0.5,  0.5,  1.0, 1.0, 1.0, 0.0, 1.0,
+
+    // back
+    0.5,  0.5,  -0.5, 1.0, 1.0, 1.0, 1.0, 1.0,
+    0.5,  -0.5, -0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
+    -0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
+    -0.5, 0.5,  -0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
+
+    // top
+    0.5,  0.5,  0.5,  1.0, 1.0, 1.0, 1.0, 1.0,
+    0.5,  0.5,  -0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
+    -0.5, 0.5,  -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
+    -0.5, 0.5,  0.5,  1.0, 1.0, 1.0, 0.0, 1.0,
+
+    // bottom
+    0.5,  -0.5, 0.5,  1.0, 1.0, 1.0, 1.0, 1.0,
+    0.5,  -0.5, -0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
+    -0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
+    -0.5, -0.5, 0.5,  1.0, 1.0, 1.0, 0.0, 1.0,
+
+    // left
+    -0.5, 0.5,  0.5,  1.0, 1.0, 1.0, 1.0, 1.0,
+    -0.5, 0.5,  -0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
+    -0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
+    -0.5, -0.5, 0.5,  1.0, 1.0, 1.0, 0.0, 1.0,
+
+    // right
+    0.5,  0.5,  0.5,  1.0, 1.0, 1.0, 1.0, 1.0,
+    0.5,  0.5,  -0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
+    0.5,  -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
+    0.5,  -0.5, 0.5,  1.0, 1.0, 1.0, 0.0, 1.0,
 };
 
 const indices = [_]u32{
-    0, 1, 3,
-    1, 2, 3,
+    // front
+    0,  1,  3,
+    1,  2,  3,
+
+    // back
+    4,  5,  7,
+    5,  6,  7,
+
+    // top
+    8,  9,  11,
+    9,  10, 11,
+
+    // bottom
+    12, 13, 15,
+    13, 14, 15,
+
+    // left
+    16, 17, 19,
+    17, 18, 19,
+
+    // left
+    20, 21, 23,
+    21, 22, 23,
+};
+
+const positions = [_]zm.Vec3f{
+    .{ 0.0, 0.0, 0.0 },
+    .{ 2.0, 5.0, -15.0 },
+    .{ -1.5, -2.2, -2.5 },
+    .{ -3.8, -2.0, -12.3 },
+    .{ 2.4, -0.4, -3.5 },
+    .{ -1.7, 3.0, -7.5 },
+    .{ 1.3, -2.0, -2.5 },
+    .{ 1.5, 2.0, -2.5 },
+    .{ 1.5, 0.2, -1.5 },
+    .{ -1.3, 1.0, -1.5 },
 };
 
 var VAO: gl.uint = undefined;
@@ -60,10 +127,10 @@ var texture0: gl.uint = undefined;
 var texture1: gl.uint = undefined;
 
 var shader: Shader = undefined;
-var minus: u64 = 0;
+var start: u64 = 0;
 
 pub fn init() void {
-    minus = rgfw.RGFW_getTimeNS();
+    start = rgfw.RGFW_getTimeNS();
 
     {
         gl.GenBuffers(1, @ptrCast(&VBO));
@@ -151,18 +218,32 @@ pub fn init() void {
     }
 
     {
+        const view = zm.Mat4f.translationVec3(.{ 0.0, 0.0, -3.0 });
+
         shader.use();
-        const trans = zm.Mat4f.identity()
-            .multiply(zm.Mat4f.rotation(.{ 0.0, 0.0, 1.0 }, std.math.degreesToRadians(90.0)))
-            .multiply(zm.Mat4f.scaling(0.5, 0.5, 0.5));
-        const transform_pos = gl.GetUniformLocation(shader.program, "transform");
-        gl.UniformMatrix4fv(transform_pos, 1, gl.TRUE, @ptrCast(&trans.data));
+        const idx = gl.GetUniformLocation(shader.program, "view");
+        gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&view.data));
+    }
+
+    {
+        const projection = zm.Mat4f.perspective(std.math.degreesToRadians(45.0), 800.0 / 600.0, 0.1, 100.0);
+
+        shader.use();
+        const idx = gl.GetUniformLocation(shader.program, "projection");
+        gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&projection.data));
+    }
+
+    {
+        gl.Enable(gl.DEPTH_TEST);
     }
 }
 
 pub fn render() void {
+    const delta = rgfw.RGFW_getTimeNS() - start;
+    const delta_second: f32 = @as(f32, @floatFromInt(delta)) / 1_000_000_000;
+
     gl.ClearColor(0.2, 0.3, 0.3, 1.0);
-    gl.Clear(gl.COLOR_BUFFER_BIT);
+    gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     {
         gl.ActiveTexture(gl.TEXTURE0);
@@ -178,6 +259,17 @@ pub fn render() void {
         gl.BindVertexArray(VAO);
         defer gl.BindVertexArray(0);
 
-        gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, 0);
+        for (1.., positions) |i, p| {
+            const angle = std.math.degreesToRadians(20.0 * @as(f32, @floatFromInt(i))) * delta_second;
+
+            const rotation = zm.Quaternionf.fromAxisAngle(.{ 1.0, 0.3, 0.5 }, angle);
+            const model = zm.Mat4f.translationVec3(p)
+                .multiply(zm.Mat4f.fromQuaternion(rotation));
+
+            const idx = gl.GetUniformLocation(shader.program, "model");
+            gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&model.data));
+
+            gl.DrawElements(gl.TRIANGLES, 6 * 6, gl.UNSIGNED_INT, 0);
+        }
     }
 }
