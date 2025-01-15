@@ -2,6 +2,7 @@ const std = @import("std");
 const gl = @import("gl");
 const zm = @import("zm");
 const Shader = @import("Shader.zig");
+const Camera = @import("Camera.zig");
 const rgfw = @import("rgfw.zig").rgfw;
 const stb_image = @import("stb_image.zig");
 
@@ -129,10 +130,11 @@ var texture1: gl.uint = undefined;
 var shader: Shader = undefined;
 var start: u64 = 0;
 
-var camera_pos = zm.Vec3f{ 0.0, 0.0, 3.0 };
-const camera_front = zm.Vec3f{ 0.0, 0.0, -1.0 };
+var camera: Camera = undefined;
 
 pub fn init() void {
+    camera = Camera.createWithDefaults(.{ 0.0, 0.0, 3.0 }, zm.vec.up(f32));
+
     start = rgfw.RGFW_getTimeNS();
 
     {
@@ -221,11 +223,7 @@ pub fn init() void {
     }
 
     {
-        const view = zm.Mat4f.lookAt(
-            camera_pos,
-            camera_pos + camera_front,
-            zm.vec.up(f32),
-        );
+        const view = camera.getViewMatrix();
 
         shader.use();
         const idx = gl.GetUniformLocation(shader.program, "view");
@@ -245,26 +243,40 @@ pub fn init() void {
     }
 }
 
-pub fn input(input_state: [4]bool) void {
+pub fn input(input_state: [4]bool, mouse_pos_offset: [2]i32) void {
     const w_pressed = input_state[0];
     const a_pressed = input_state[1];
     const s_pressed = input_state[2];
     const d_pressed = input_state[3];
 
+    const sensitivity: f32 = 0.15;
+
+    var x_offset: f32 = @floatFromInt(mouse_pos_offset[0]);
+    var y_offset: f32 = @floatFromInt(mouse_pos_offset[1]);
+
+    x_offset *= sensitivity;
+    y_offset *= sensitivity;
+
+    camera.rotate(x_offset, y_offset);
+
     const camera_speed: f32 = 0.05;
     const camera_speed_vector = @as(zm.Vec3f, @splat(camera_speed));
 
+    const inverse_vector = @as(zm.Vec3f, @splat(-1));
+
     if (w_pressed) {
-        camera_pos += camera_front * camera_speed_vector;
+        camera.translate(camera.front * camera_speed_vector);
     }
     if (a_pressed) {
-        camera_pos -= zm.vec.normalize(zm.vec.cross(camera_front, zm.vec.up(f32))) * camera_speed_vector;
+        const translation = zm.vec.normalize(zm.vec.cross(camera.front, zm.vec.up(f32))) * camera_speed_vector;
+        camera.translate(translation * inverse_vector);
     }
     if (s_pressed) {
-        camera_pos -= camera_front * camera_speed_vector;
+        camera.translate(camera.front * camera_speed_vector * inverse_vector);
     }
     if (d_pressed) {
-        camera_pos += zm.vec.normalize(zm.vec.cross(camera_front, zm.vec.up(f32))) * camera_speed_vector;
+        const translation = zm.vec.normalize(zm.vec.cross(camera.front, zm.vec.up(f32))) * camera_speed_vector;
+        camera.translate(translation);
     }
 }
 
@@ -290,11 +302,7 @@ pub fn render() void {
         defer gl.BindVertexArray(0);
 
         {
-            const view = zm.Mat4f.lookAt(
-                camera_pos,
-                camera_pos + camera_front,
-                zm.vec.up(f32),
-            );
+            const view = camera.getViewMatrix();
 
             shader.use();
             const idx = gl.GetUniformLocation(shader.program, "view");
