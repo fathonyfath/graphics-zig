@@ -1,5 +1,6 @@
 const std = @import("std");
 const gl = @import("gl");
+const zm = @import("zm");
 const Shader = @import("Shader.zig");
 const rgfw = @import("rgfw.zig").rgfw;
 const stb_image = @import("stb_image.zig");
@@ -13,8 +14,10 @@ const vertex_shader_source =
     \\out vec3 ourColor;
     \\out vec2 TexCoord;
     \\
+    \\uniform mat4 transform;
+    \\
     \\void main() {
-    \\  gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+    \\  gl_Position = transform * vec4(aPos.x, aPos.y, aPos.z, 1.0);
     \\  ourColor = aColor;
     \\  TexCoord = aTexCoord;
     \\}
@@ -145,6 +148,15 @@ pub fn init() void {
         gl.Uniform1i(texture0_pos, 0);
         const texture1_pos = gl.GetUniformLocation(shader.program, "texture1");
         gl.Uniform1i(texture1_pos, 1);
+    }
+
+    {
+        shader.use();
+        const trans = zm.Mat4f.identity()
+            .multiply(zm.Mat4f.rotation(.{ 0.0, 0.0, 1.0 }, std.math.degreesToRadians(90.0)))
+            .multiply(zm.Mat4f.scaling(0.5, 0.5, 0.5));
+        const transform_pos = gl.GetUniformLocation(shader.program, "transform");
+        gl.UniformMatrix4fv(transform_pos, 1, gl.TRUE, @ptrCast(&trans.data));
     }
 }
 
