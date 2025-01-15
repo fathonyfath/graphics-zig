@@ -129,6 +129,9 @@ var texture1: gl.uint = undefined;
 var shader: Shader = undefined;
 var start: u64 = 0;
 
+var camera_pos = zm.Vec3f{ 0.0, 0.0, 3.0 };
+const camera_front = zm.Vec3f{ 0.0, 0.0, -1.0 };
+
 pub fn init() void {
     start = rgfw.RGFW_getTimeNS();
 
@@ -218,7 +221,11 @@ pub fn init() void {
     }
 
     {
-        const view = zm.Mat4f.translationVec3(.{ 0.0, 0.0, -3.0 });
+        const view = zm.Mat4f.lookAt(
+            camera_pos,
+            camera_pos + camera_front,
+            zm.vec.up(f32),
+        );
 
         shader.use();
         const idx = gl.GetUniformLocation(shader.program, "view");
@@ -235,6 +242,29 @@ pub fn init() void {
 
     {
         gl.Enable(gl.DEPTH_TEST);
+    }
+}
+
+pub fn input(input_state: [4]bool) void {
+    const w_pressed = input_state[0];
+    const a_pressed = input_state[1];
+    const s_pressed = input_state[2];
+    const d_pressed = input_state[3];
+
+    const camera_speed: f32 = 0.05;
+    const camera_speed_vector = @as(zm.Vec3f, @splat(camera_speed));
+
+    if (w_pressed) {
+        camera_pos += camera_front * camera_speed_vector;
+    }
+    if (a_pressed) {
+        camera_pos -= zm.vec.normalize(zm.vec.cross(camera_front, zm.vec.up(f32))) * camera_speed_vector;
+    }
+    if (s_pressed) {
+        camera_pos -= camera_front * camera_speed_vector;
+    }
+    if (d_pressed) {
+        camera_pos += zm.vec.normalize(zm.vec.cross(camera_front, zm.vec.up(f32))) * camera_speed_vector;
     }
 }
 
@@ -258,6 +288,18 @@ pub fn render() void {
 
         gl.BindVertexArray(VAO);
         defer gl.BindVertexArray(0);
+
+        {
+            const view = zm.Mat4f.lookAt(
+                camera_pos,
+                camera_pos + camera_front,
+                zm.vec.up(f32),
+            );
+
+            shader.use();
+            const idx = gl.GetUniformLocation(shader.program, "view");
+            gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&view.data));
+        }
 
         for (1.., positions) |i, p| {
             const angle = std.math.degreesToRadians(20.0 * @as(f32, @floatFromInt(i))) * delta_second;
