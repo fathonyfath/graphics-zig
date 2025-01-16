@@ -5,43 +5,7 @@ const Shader = @import("Shader.zig");
 const Camera = @import("Camera.zig");
 const rgfw = @import("rgfw.zig").rgfw;
 const stb_image = @import("stb_image.zig");
-
-const vertex_shader_source =
-    \\#version 330 core
-    \\layout(location = 0) in vec3 aPos;
-    \\layout(location = 1) in vec3 aColor;
-    \\layout(location = 2) in vec2 aTexCoord;
-    \\
-    \\out vec3 ourColor;
-    \\out vec2 TexCoord;
-    \\
-    \\uniform mat4 model;
-    \\uniform mat4 view;
-    \\uniform mat4 projection;
-    \\
-    \\void main() {
-    \\  gl_Position = projection * view * model * vec4(aPos, 1.0);
-    \\  ourColor = aColor;
-    \\  TexCoord = aTexCoord;
-    \\}
-    \\
-;
-
-const fragment_shader_source =
-    \\#version 330 core
-    \\in vec3 ourColor;
-    \\in vec2 TexCoord;
-    \\
-    \\out vec4 FragColor;
-    \\
-    \\uniform sampler2D texture0;
-    \\uniform sampler2D texture1;
-    \\
-    \\void main() {
-    \\  FragColor = mix(texture(texture0, TexCoord), texture(texture1, TexCoord), 0.2) * vec4(ourColor, 1.0);
-    \\}
-    \\
-;
+const shaders = @import("shaders.zig");
 
 const vertices = [_]f32{
     // positions      // colors      // tex coords
@@ -108,33 +72,21 @@ const indices = [_]u32{
     21, 22, 23,
 };
 
-const positions = [_]zm.Vec3f{
-    .{ 0.0, 0.0, 0.0 },
-    .{ 2.0, 5.0, -15.0 },
-    .{ -1.5, -2.2, -2.5 },
-    .{ -3.8, -2.0, -12.3 },
-    .{ 2.4, -0.4, -3.5 },
-    .{ -1.7, 3.0, -7.5 },
-    .{ 1.3, -2.0, -2.5 },
-    .{ 1.5, 2.0, -2.5 },
-    .{ 1.5, 0.2, -1.5 },
-    .{ -1.3, 1.0, -1.5 },
-};
-
 var VAO: gl.uint = undefined;
 var VBO: gl.uint = undefined;
 var EBO: gl.uint = undefined;
 var texture0: gl.uint = undefined;
 var texture1: gl.uint = undefined;
 
-var shader: Shader = undefined;
 var start: u64 = 0;
+var delta: u64 = 0;
+var delta_second: f32 = 0.0;
 
 var camera: Camera = undefined;
 
 pub fn init() void {
+    shaders.initialize();
     camera = Camera.createWithDefaults(.{ 0.0, 0.0, 3.0 }, zm.vec.up(f32));
-
     start = rgfw.RGFW_getTimeNS();
 
     {
@@ -171,77 +123,44 @@ pub fn init() void {
 
             gl.EnableVertexAttribArray(0);
             gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 8 * @sizeOf(f32), 0);
-            gl.EnableVertexAttribArray(1);
-            gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 8 * @sizeOf(f32), 3 * @sizeOf(f32));
-            gl.EnableVertexAttribArray(2);
-            gl.VertexAttribPointer(2, 2, gl.FLOAT, gl.FALSE, 8 * @sizeOf(f32), 6 * @sizeOf(f32));
+            // disabled as we only need the vertex location for now
+            // gl.EnableVertexAttribArray(1);
+            // gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 8 * @sizeOf(f32), 3 * @sizeOf(f32));
+            // gl.EnableVertexAttribArray(2);
+            // gl.VertexAttribPointer(2, 2, gl.FLOAT, gl.FALSE, 8 * @sizeOf(f32), 6 * @sizeOf(f32));
         }
-    }
-
-    shader = Shader.create(vertex_shader_source, fragment_shader_source);
-
-    {
-        var width: i32 = undefined;
-        var height: i32 = undefined;
-        var num_in_channels: i32 = undefined;
-
-        const data = stb_image.loadImage("container.jpg", &width, &height, &num_in_channels);
-        defer stb_image.freeImage(data);
-
-        gl.GenTextures(1, @ptrCast(&texture0));
-
-        gl.BindTexture(gl.TEXTURE_2D, texture0);
-        defer gl.BindTexture(gl.TEXTURE_2D, 0);
-
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-        gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_BYTE, data);
-        gl.GenerateMipmap(gl.TEXTURE_2D);
-    }
-
-    {
-        var width: i32 = undefined;
-        var height: i32 = undefined;
-        var num_in_channels: i32 = undefined;
-
-        const data = stb_image.loadImage("awesomeface.png", &width, &height, &num_in_channels);
-        defer stb_image.freeImage(data);
-
-        gl.GenTextures(1, @ptrCast(&texture1));
-
-        gl.BindTexture(gl.TEXTURE_2D, texture1);
-        defer gl.BindTexture(gl.TEXTURE_2D, 0);
-
-        gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-        gl.GenerateMipmap(gl.TEXTURE_2D);
-    }
-
-    {
-        shader.use();
-        const texture0_pos = gl.GetUniformLocation(shader.program, "texture0");
-        gl.Uniform1i(texture0_pos, 0);
-        const texture1_pos = gl.GetUniformLocation(shader.program, "texture1");
-        gl.Uniform1i(texture1_pos, 1);
     }
 
     {
         const view = camera.getViewMatrix();
 
-        shader.use();
-        const idx = gl.GetUniformLocation(shader.program, "view");
-        gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&view.data));
+        for (shaders.shaders()) |shader| {
+            shader.use();
+            const idx = gl.GetUniformLocation(shader.program, "view");
+            gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&view.data));
+        }
     }
 
     {
         const projection = zm.Mat4f.perspective(std.math.degreesToRadians(45.0), 800.0 / 600.0, 0.1, 100.0);
 
-        shader.use();
-        const idx = gl.GetUniformLocation(shader.program, "projection");
-        gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&projection.data));
+        for (shaders.shaders()) |shader| {
+            shader.use();
+            const idx = gl.GetUniformLocation(shader.program, "projection");
+            gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&projection.data));
+        }
+    }
+
+    {
+        shaders.object_shader.use();
+        {
+            const idx = gl.GetUniformLocation(shaders.object_shader.program, "objectColor");
+            gl.Uniform3fv(idx, 1, @ptrCast(&zm.Vec3f{ 1.0, 0.5, 0.31 }));
+        }
+        {
+            const idx = gl.GetUniformLocation(shaders.object_shader.program, "lightColor");
+            gl.Uniform3fv(idx, 1, @ptrCast(&zm.Vec3f{ 1.0, 1.0, 1.0 }));
+        }
     }
 
     {
@@ -287,44 +206,40 @@ pub fn input(input_state: [4]bool, mouse_pos_offset: [2]i32) void {
 }
 
 pub fn render() void {
-    const delta = rgfw.RGFW_getTimeNS() - start;
-    const delta_second: f32 = @as(f32, @floatFromInt(delta)) / 1_000_000_000;
+    delta = rgfw.RGFW_getTimeNS() - start;
+    delta_second = @as(f32, @floatFromInt(delta)) / 1_000_000_000;
 
-    gl.ClearColor(0.2, 0.3, 0.3, 1.0);
+    gl.ClearColor(0.1, 0.1, 0.1, 1.0);
     gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     {
-        gl.ActiveTexture(gl.TEXTURE0);
-        gl.BindTexture(gl.TEXTURE_2D, texture0);
-        defer gl.BindTexture(gl.TEXTURE_2D, 0);
+        {
+            const view = camera.getViewMatrix();
 
-        gl.ActiveTexture(gl.TEXTURE1);
-        gl.BindTexture(gl.TEXTURE_2D, texture1);
-        defer gl.BindTexture(gl.TEXTURE_2D, 0);
-
-        shader.use();
+            for (shaders.shaders()) |shader| {
+                shader.use();
+                const idx = gl.GetUniformLocation(shader.program, "view");
+                gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&view.data));
+            }
+        }
 
         gl.BindVertexArray(VAO);
         defer gl.BindVertexArray(0);
 
         {
-            const view = camera.getViewMatrix();
-
-            shader.use();
-            const idx = gl.GetUniformLocation(shader.program, "view");
-            gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&view.data));
+            shaders.object_shader.use();
+            const model = zm.Mat4f.translationVec3(.{ 0.0, 0.0, 0.0 });
+            const idx = gl.GetUniformLocation(shaders.object_shader.program, "model");
+            gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&model.data));
+            gl.DrawElements(gl.TRIANGLES, 6 * 6, gl.UNSIGNED_INT, 0);
         }
 
-        for (1.., positions) |i, p| {
-            const angle = std.math.degreesToRadians(20.0 * @as(f32, @floatFromInt(i))) * delta_second;
-
-            const rotation = zm.Quaternionf.fromAxisAngle(.{ 1.0, 0.3, 0.5 }, angle);
-            const model = zm.Mat4f.translationVec3(p)
-                .multiply(zm.Mat4f.fromQuaternion(rotation));
-
-            const idx = gl.GetUniformLocation(shader.program, "model");
+        {
+            shaders.light_shader.use();
+            const model = zm.Mat4f.translationVec3(.{ 1.2, 1.0, 2.0 })
+                .multiply(zm.Mat4f.scaling(0.2, 0.2, 0.2));
+            const idx = gl.GetUniformLocation(shaders.light_shader.program, "model");
             gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&model.data));
-
             gl.DrawElements(gl.TRIANGLES, 6 * 6, gl.UNSIGNED_INT, 0);
         }
     }
