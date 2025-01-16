@@ -8,42 +8,42 @@ const stb_image = @import("stb_image.zig");
 const shaders = @import("shaders.zig");
 
 const vertices = [_]f32{
-    // positions      // colors      // tex coords
+    // positions      // normal
     // front
-    0.5,  0.5,  0.5,  1.0, 1.0, 1.0, 1.0, 1.0,
-    0.5,  -0.5, 0.5,  1.0, 1.0, 1.0, 1.0, 0.0,
-    -0.5, -0.5, 0.5,  1.0, 1.0, 1.0, 0.0, 0.0,
-    -0.5, 0.5,  0.5,  1.0, 1.0, 1.0, 0.0, 1.0,
+    0.5,  0.5,  0.5,  0.0,  0.0,  1.0,
+    0.5,  -0.5, 0.5,  0.0,  0.0,  1.0,
+    -0.5, -0.5, 0.5,  0.0,  0.0,  1.0,
+    -0.5, 0.5,  0.5,  0.0,  0.0,  1.0,
 
     // back
-    0.5,  0.5,  -0.5, 1.0, 1.0, 1.0, 1.0, 1.0,
-    0.5,  -0.5, -0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-    -0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-    -0.5, 0.5,  -0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
+    0.5,  0.5,  -0.5, 0.0,  0.0,  -1.0,
+    0.5,  -0.5, -0.5, 0.0,  0.0,  -1.0,
+    -0.5, -0.5, -0.5, 0.0,  0.0,  -1.0,
+    -0.5, 0.5,  -0.5, 0.0,  0.0,  -1.0,
 
     // top
-    0.5,  0.5,  0.5,  1.0, 1.0, 1.0, 1.0, 1.0,
-    0.5,  0.5,  -0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-    -0.5, 0.5,  -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-    -0.5, 0.5,  0.5,  1.0, 1.0, 1.0, 0.0, 1.0,
+    0.5,  0.5,  0.5,  0.0,  1.0,  0.0,
+    0.5,  0.5,  -0.5, 0.0,  1.0,  0.0,
+    -0.5, 0.5,  -0.5, 0.0,  1.0,  0.0,
+    -0.5, 0.5,  0.5,  0.0,  1.0,  0.0,
 
     // bottom
-    0.5,  -0.5, 0.5,  1.0, 1.0, 1.0, 1.0, 1.0,
-    0.5,  -0.5, -0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-    -0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-    -0.5, -0.5, 0.5,  1.0, 1.0, 1.0, 0.0, 1.0,
+    0.5,  -0.5, 0.5,  0.0,  -1.0, 0.0,
+    0.5,  -0.5, -0.5, 0.0,  -1.0, 0.0,
+    -0.5, -0.5, -0.5, 0.0,  -1.0, 0.0,
+    -0.5, -0.5, 0.5,  0.0,  -1.0, 0.0,
 
     // left
-    -0.5, 0.5,  0.5,  1.0, 1.0, 1.0, 1.0, 1.0,
-    -0.5, 0.5,  -0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-    -0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-    -0.5, -0.5, 0.5,  1.0, 1.0, 1.0, 0.0, 1.0,
+    -0.5, 0.5,  0.5,  -1.0, 0.0,  0.0,
+    -0.5, 0.5,  -0.5, -1.0, 0.0,  0.0,
+    -0.5, -0.5, -0.5, -1.0, 0.0,  0.0,
+    -0.5, -0.5, 0.5,  -1.0, 0.0,  0.0,
 
     // right
-    0.5,  0.5,  0.5,  1.0, 1.0, 1.0, 1.0, 1.0,
-    0.5,  0.5,  -0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-    0.5,  -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-    0.5,  -0.5, 0.5,  1.0, 1.0, 1.0, 0.0, 1.0,
+    0.5,  0.5,  0.5,  1.0,  0.0,  0.0,
+    0.5,  0.5,  -0.5, 1.0,  0.0,  0.0,
+    0.5,  -0.5, -0.5, 1.0,  0.0,  0.0,
+    0.5,  -0.5, 0.5,  1.0,  0.0,  0.0,
 };
 
 const indices = [_]u32{
@@ -84,6 +84,8 @@ var delta_second: f32 = 0.0;
 
 var camera: Camera = undefined;
 
+var light_position = zm.Vec3f{ 0.0, 0.0, 0.0 };
+
 pub fn init() void {
     shaders.initialize();
     camera = Camera.createWithDefaults(.{ 0.0, 0.0, 3.0 }, zm.vec.up(f32));
@@ -122,10 +124,9 @@ pub fn init() void {
             defer gl.BindBuffer(gl.ARRAY_BUFFER, 0);
 
             gl.EnableVertexAttribArray(0);
-            gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 8 * @sizeOf(f32), 0);
-            // disabled as we only need the vertex location for now
-            // gl.EnableVertexAttribArray(1);
-            // gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 8 * @sizeOf(f32), 3 * @sizeOf(f32));
+            gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 6 * @sizeOf(f32), 0);
+            gl.EnableVertexAttribArray(1);
+            gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 6 * @sizeOf(f32), 3 * @sizeOf(f32));
             // gl.EnableVertexAttribArray(2);
             // gl.VertexAttribPointer(2, 2, gl.FLOAT, gl.FALSE, 8 * @sizeOf(f32), 6 * @sizeOf(f32));
         }
@@ -212,6 +213,9 @@ pub fn render() void {
     gl.ClearColor(0.1, 0.1, 0.1, 1.0);
     gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+    light_position[0] = 1.0 + std.math.sin(delta_second) * 2.0;
+    light_position[1] = std.math.sin(delta_second / 2.0) * 1.0;
+
     {
         {
             const view = camera.getViewMatrix();
@@ -227,16 +231,27 @@ pub fn render() void {
         defer gl.BindVertexArray(0);
 
         {
-            shaders.object_shader.use();
             const model = zm.Mat4f.translationVec3(.{ 0.0, 0.0, 0.0 });
-            const idx = gl.GetUniformLocation(shaders.object_shader.program, "model");
-            gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&model.data));
+
+            shaders.object_shader.use();
+            {
+                const idx = gl.GetUniformLocation(shaders.object_shader.program, "model");
+                gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&model.data));
+            }
+            {
+                const idx = gl.GetUniformLocation(shaders.object_shader.program, "lightPos");
+                gl.Uniform3fv(idx, 1, @ptrCast(&light_position));
+            }
+            {
+                const idx = gl.GetUniformLocation(shaders.object_shader.program, "viewPos");
+                gl.Uniform3fv(idx, 1, @ptrCast(&camera.position));
+            }
             gl.DrawElements(gl.TRIANGLES, 6 * 6, gl.UNSIGNED_INT, 0);
         }
 
         {
             shaders.light_shader.use();
-            const model = zm.Mat4f.translationVec3(.{ 1.2, 1.0, 2.0 })
+            const model = zm.Mat4f.translationVec3(light_position)
                 .multiply(zm.Mat4f.scaling(0.2, 0.2, 0.2));
             const idx = gl.GetUniformLocation(shaders.light_shader.program, "model");
             gl.UniformMatrix4fv(idx, 1, gl.TRUE, @ptrCast(&model.data));
