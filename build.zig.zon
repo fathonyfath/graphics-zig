@@ -7,6 +7,18 @@
             .url = "git+https://github.com/castholm/zigglgen#1c901bef6d312ef1814b8fce3c5a9e9e8e61ac2d",
             .hash = "12209d8a018832bee15d9da29a12fa753d89b56cd843cdf1f39501546c6467e38ba1",
         },
+        .zm = .{
+            .url = "git+https://github.com/fathonyfath/zm?ref=0.13.x-compat#0d9383a451acc94670e76bd70bdad0524431ef46",
+            .hash = "1220ca0642c747f76ad2eb7a270f47b11821643ffa9908639a897a7bceb098cbb5a9",
+        },
+        .mach_freetype = .{
+            .url = "git+https://github.com/hexops/mach-freetype.git#86fc8024d4ddd53df75dfa4f3ad4eebe0b1b4284",
+            .hash = "12206251ed342f400b80abf3c338521f5d8c83eb596899abf77a2afe0cfd46e61ff0",
+        },
+        .font_assets = .{
+            .url = "git+https://github.com/hexops/font-assets.git#899f16b815fde126ba8f6fb781e65253f461b7bf",
+            .hash = "12202b816e7c31c516bd87218fd56f9b1f93671e4ab42a2a98110d586c4b3bdd2730",
+        },
     },
     .paths = .{
         "build.zig",

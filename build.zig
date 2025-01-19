@@ -12,6 +12,9 @@ pub fn build(b: *std.Build) void {
     });
     addRGFW(b, exe, target);
     addOpenGL(b, exe);
+    addZm(b, exe);
+    addFreeType(b, exe, target, optimize);
+    addFontAssets(b, exe);
 
     b.installArtifact(exe);
 
@@ -31,7 +34,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     addRGFW(b, exe_unit_tests, target);
-    addOpenGL(b, exe);
+    addOpenGL(b, exe_unit_tests);
+    addZm(b, exe_unit_tests);
+    addFreeType(b, exe_unit_tests, target, optimize);
+    addFontAssets(b, exe_unit_tests);
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
 
@@ -72,4 +78,22 @@ fn addOpenGL(b: *std.Build, compile: *std.Build.Step.Compile) void {
     });
 
     compile.root_module.addImport("gl", gl_bindings);
+}
+
+fn addZm(b: *std.Build, compile: *std.Build.Step.Compile) void {
+    const zm = b.dependency("zm", .{});
+    compile.root_module.addImport("zm", zm.module("zm"));
+}
+
+fn addFreeType(b: *std.Build, compile: *std.Build.Step.Compile, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
+    const freetype = b.dependency("mach_freetype", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    compile.root_module.addImport("freetype", freetype.module("mach-freetype"));
+}
+
+fn addFontAssets(b: *std.Build, compile: *std.Build.Step.Compile) void {
+    const font_assets = b.dependency("font_assets", .{});
+    compile.root_module.addImport("font-assets", font_assets.module("font-assets"));
 }
