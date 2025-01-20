@@ -14,6 +14,7 @@ pub fn build(b: *std.Build) void {
     addOpenGL(b, exe);
     addZm(b, exe);
     addFreeType(b, exe, target, optimize);
+    addHarfBuzz(b, exe, target, optimize);
     addFontAssets(b, exe);
 
     b.installArtifact(exe);
@@ -37,6 +38,7 @@ pub fn build(b: *std.Build) void {
     addOpenGL(b, exe_unit_tests);
     addZm(b, exe_unit_tests);
     addFreeType(b, exe_unit_tests, target, optimize);
+    addHarfBuzz(b, exe_unit_tests, target, optimize);
     addFontAssets(b, exe_unit_tests);
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
@@ -86,11 +88,19 @@ fn addZm(b: *std.Build, compile: *std.Build.Step.Compile) void {
 }
 
 fn addFreeType(b: *std.Build, compile: *std.Build.Step.Compile, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
-    const freetype = b.dependency("mach_freetype", .{
+    const mach_freetype = b.dependency("mach_freetype", .{
         .target = target,
         .optimize = optimize,
     });
-    compile.root_module.addImport("freetype", freetype.module("mach-freetype"));
+    compile.root_module.addImport("freetype", mach_freetype.module("mach-freetype"));
+}
+
+fn addHarfBuzz(b: *std.Build, compile: *std.Build.Step.Compile, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
+    const mach_freetype = b.dependency("mach_freetype", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    compile.root_module.addImport("harfbuzz", mach_freetype.module("mach-harfbuzz"));
 }
 
 fn addFontAssets(b: *std.Build, compile: *std.Build.Step.Compile) void {
