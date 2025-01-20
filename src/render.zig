@@ -12,6 +12,5 @@ pub fn render() void {
     gl.ClearColor(1.0, 1.0, 1.0, 1.0);
     gl.Clear(gl.COLOR_BUFFER_BIT);
 
-    fonts.renderText("Render the text Office", 25.0, 480.0, 0.7, .{ 0.0, 0.0, 0.0 });
-    // fonts.renderText("(C) LearnOpenGL.com", 540.0, 25.0, 0.5, .{ 0.3, 0.7, 0.9 });
+    fonts.renderText("Render the text Office", 25.0, 550.0, 0.7, .{ 0.0, 0.0, 0.0 });
 }

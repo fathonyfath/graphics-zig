@@ -56,7 +56,6 @@ var harfbuzz_font: harfbuzz.Font = undefined;
 const OldCharacterMap = std.AutoArrayHashMap(u8, Character);
 const CharacterMap = std.AutoArrayHashMap(u32, Character);
 
-var old_character_map: OldCharacterMap = undefined;
 var character_map: CharacterMap = undefined;
 
 var shader: Shader = undefined;
@@ -72,48 +71,18 @@ pub fn init() void {
 
     library = freetype.Library.init() catch unreachable;
 
-    face = library.createFaceMemory(font_assets.fira_sans_regular_ttf, 0) catch unreachable;
+    face = library.createFaceMemory(font_assets.deja_vu_sans_pfb, 0) catch unreachable;
     face.setPixelSizes(0, 48) catch unreachable;
 
     harfbuzz_buffer = harfbuzz.Buffer.init().?;
     harfbuzz_font = harfbuzz.Font.fromFreetypeFace(face);
 
-    old_character_map = OldCharacterMap.init(allocator);
     character_map = CharacterMap.init(allocator);
 
     gl.Enable(gl.BLEND);
     gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1);
-
-    inline for (0..128) |i| {
-        face.loadChar(@as(u32, i), freetype.LoadFlags{ .render = true }) catch unreachable;
-        var texture_id: u32 = undefined;
-        gl.GenTextures(1, @ptrCast(&texture_id));
-        gl.BindTexture(gl.TEXTURE_2D, texture_id);
-        gl.TexImage2D(
-            gl.TEXTURE_2D,
-            0,
-            gl.RED,
-            @intCast(face.glyph().bitmap().width()),
-            @intCast(face.glyph().bitmap().rows()),
-            0,
-            gl.RED,
-            gl.UNSIGNED_BYTE,
-            @ptrCast(face.glyph().bitmap().buffer()),
-        );
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-        old_character_map.put(i, .{
-            .texture_id = texture_id,
-            .size = .{ @intCast(face.glyph().bitmap().width()), @intCast(face.glyph().bitmap().rows()) },
-            .bearing = .{ face.glyph().bitmapLeft(), face.glyph().bitmapTop() },
-            .advance = @intCast(face.glyph().advance().x),
-        }) catch unreachable;
-    }
 
     {
         const projection = zm.Mat4f.orthographic(0, 800, 0, 600, 0, 600);
@@ -203,41 +172,6 @@ pub fn renderText(text: []const u8, x: f32, y: f32, scale: f32, color: zm.Vec3f)
 
             cursor_x += x_advance;
             cursor_y += y_advance;
-        }
-    }
-
-    {
-        var char_x: f32 = x;
-        const char_y: f32 = y + 60;
-
-        for (text) |c| {
-            const character = old_character_map.get(c) orelse unreachable;
-
-            const x_pos: f32 = char_x + @as(f32, @floatFromInt(character.bearing[0])) * scale;
-            const y_pos: f32 = char_y - @as(f32, @floatFromInt((character.size[1] - character.bearing[1]))) * scale;
-
-            const w: f32 = @as(f32, @floatFromInt(character.size[0])) * scale;
-            const h: f32 = @as(f32, @floatFromInt(character.size[1])) * scale;
-
-            const vertices = [_]f32{
-                x_pos,     y_pos + h, 0.0, 0.0,
-                x_pos,     y_pos,     0.0, 1.0,
-                x_pos + w, y_pos,     1.0, 1.0,
-
-                x_pos,     y_pos + h, 0.0, 0.0,
-                x_pos + w, y_pos,     1.0, 1.0,
-                x_pos + w, y_pos + h, 1.0, 0.0,
-            };
-
-            gl.BindTexture(gl.TEXTURE_2D, character.texture_id);
-            {
-                gl.BindBuffer(gl.ARRAY_BUFFER, VBO);
-                defer gl.BindBuffer(gl.ARRAY_BUFFER, 0);
-                gl.BufferSubData(gl.ARRAY_BUFFER, 0, @sizeOf(@TypeOf(vertices)), @ptrCast(&vertices));
-            }
-
-            gl.DrawArrays(gl.TRIANGLES, 0, 6);
-            char_x += @as(f32, @floatFromInt(character.advance >> 6)) * scale;
         }
     }
 
